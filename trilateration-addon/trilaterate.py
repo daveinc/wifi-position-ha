@@ -1,11 +1,9 @@
 """
-WiFi CSI Trilateration Engine
+WiFi CSI Trilateration Engine - Pure NumPy implementation
 Based on Espressif esp-csi (Apache 2.0)
-https://github.com/espressif/esp-csi
 """
 
 import numpy as np
-from scipy.optimize import minimize
 from dataclasses import dataclass, field
 from typing import Optional
 import logging
@@ -42,8 +40,7 @@ class Anchor:
         rssi = self.smoothed_rssi
         if rssi is None:
             return None
-        distance = 10 ** ((RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT))
-        return max(0.1, distance)
+        return max(0.1, 10 ** ((RSSI_AT_1M - rssi) / (10 * PATH_LOSS_EXPONENT)))
 
 
 class KalmanFilter2D:
@@ -51,16 +48,8 @@ class KalmanFilter2D:
         self.x = np.zeros(4)
         self.P = np.eye(4) * 100
         dt = 0.1
-        self.F = np.array([
-            [1, 0, dt, 0],
-            [0, 1, 0, dt],
-            [0, 0, 1,  0],
-            [0, 0, 0,  1]
-        ])
-        self.H = np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0]
-        ])
+        self.F = np.array([[1,0,dt,0],[0,1,0,dt],[0,0,1,0],[0,0,0,1]], dtype=float)
+        self.H = np.array([[1,0,0,0],[0,1,0,0]], dtype=float)
         self.Q = np.eye(4) * KALMAN_Q
         self.R = np.eye(2) * KALMAN_R
         self.initialized = False
@@ -68,16 +57,15 @@ class KalmanFilter2D:
     def update(self, x: float, y: float) -> tuple:
         z = np.array([x, y])
         if not self.initialized:
-            self.x[0] = x
-            self.x[1] = y
+            self.x[0], self.x[1] = x, y
             self.initialized = True
             return x, y
         self.x = self.F @ self.x
         self.P = self.F @ self.P @ self.F.T + self.Q
-        y_innov = z - self.H @ self.x
+        y_inn = z - self.H @ self.x
         S = self.H @ self.P @ self.H.T + self.R
         K = self.P @ self.H.T @ np.linalg.inv(S)
-        self.x = self.x + K @ y_innov
+        self.x = self.x + K @ y_inn
         self.P = (np.eye(4) - K @ self.H) @ self.P
         return float(self.x[0]), float(self.x[1])
 
@@ -88,7 +76,6 @@ class Trilaterator:
         self.room_width = room_width
         self.room_height = room_height
         self.kalman = KalmanFilter2D()
-        self.last_position: Optional[tuple] = None
 
     def add_anchor(self, node_id: str, x: float, y: float):
         self.anchors[node_id] = Anchor(node_id=node_id, x=x, y=y)
@@ -105,32 +92,41 @@ class Trilaterator:
         if len(active) < 3:
             return None
 
-        positions = np.array([[a.x, a.y] for a in active])
-        distances = np.array([a.estimated_distance for a in active])
-        weights = 1.0 / (distances ** 2)
+        # Least squares trilateration using pure numpy
+        # Convert to linear system using anchor[0] as reference
+        ref = active[0]
+        A, b = [], []
+        for a in active[1:]:
+            A.append([
+                2 * (a.x - ref.x),
+                2 * (a.y - ref.y)
+            ])
+            b.append(
+                a.estimated_distance**2 - ref.estimated_distance**2
+                - a.x**2 + ref.x**2
+                - a.y**2 + ref.y**2
+            )
 
-        def cost(point):
-            diffs = np.sqrt(np.sum((positions - point) ** 2, axis=1)) - distances
-            return np.sum(weights * diffs ** 2)
+        A = np.array(A)
+        b = np.array(b)
 
-        x0 = np.average(positions[:, 0], weights=weights)
-        y0 = np.average(positions[:, 1], weights=weights)
-
-        result = minimize(
-            cost,
-            x0=[x0, y0],
-            method='L-BFGS-B',
-            bounds=[(0, self.room_width), (0, self.room_height)]
-        )
-
-        if not result.success:
+        try:
+            result, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+            raw_x, raw_y = result
+        except Exception:
             return None
 
-        raw_x, raw_y = result.x
+        # Clamp to room bounds
+        raw_x = float(np.clip(raw_x, 0, self.room_width))
+        raw_y = float(np.clip(raw_y, 0, self.room_height))
+
         smooth_x, smooth_y = self.kalman.update(raw_x, raw_y)
-        residual = result.fun / len(active)
-        confidence = max(0, min(100, int(100 - (residual * 10))))
-        self.last_position = (smooth_x, smooth_y)
+
+        # Confidence based on residual
+        predicted = np.sqrt(np.sum((np.array([[a.x, a.y] for a in active]) - [smooth_x, smooth_y])**2, axis=1))
+        actual = np.array([a.estimated_distance for a in active])
+        residual = float(np.mean(np.abs(predicted - actual)))
+        confidence = max(0, min(100, int(100 - residual * 15)))
 
         return {
             "x": round(smooth_x, 2),
