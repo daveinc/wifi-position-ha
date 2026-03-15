@@ -1,0 +1,36 @@
+{
+  "name": "WiFi CSI Position Tracker",
+  "version": "0.1.0",
+  "slug": "wifi_position_tracker",
+  "description": "Real-time indoor positioning using ESP32 CSI/RSSI trilateration.",
+  "url": "https://github.com/daveinc/wifi-position-ha",
+  "arch": ["aarch64", "amd64", "armv7"],
+  "startup": "application",
+  "boot": "auto",
+  "options": {
+    "mqtt_host": "core-mosquitto",
+    "mqtt_port": 1883,
+    "mqtt_user": "",
+    "mqtt_password": "",
+    "anchor_count": 4,
+    "update_interval_ms": 100,
+    "room_width_m": 10,
+    "room_height_m": 8
+  },
+  "schema": {
+    "mqtt_host": "str",
+    "mqtt_port": "int",
+    "mqtt_user": "str",
+    "mqtt_password": "str",
+    "anchor_count": "int",
+    "update_interval_ms": "int",
+    "room_width_m": "float",
+    "room_height_m": "float"
+  },
+  "ports": {
+    "8099/tcp": 8099
+  },
+  "ports_description": {
+    "8099/tcp": "Web dashboard (live map)"
+  }
+}
