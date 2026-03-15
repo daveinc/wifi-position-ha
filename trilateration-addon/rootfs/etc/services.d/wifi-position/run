@@ -1,8 +1,4 @@
 #!/usr/bin/with-contenv bashio
-# ==============================================================================
-# WiFi Position Tracker — s6-overlay service runner
-# ==============================================================================
 set -e
-
 bashio::log.info "Starting WiFi Position Tracker..."
 exec python3 /app/server.py
