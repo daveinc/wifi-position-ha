@@ -27,7 +27,6 @@
     "room_width_m": "float",
     "room_height_m": "float"
   },
-  "map": ["ssl"],
   "ports": {
     "8099/tcp": 8099
   },
