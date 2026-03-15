@@ -1,0 +1,12 @@
+{
+  "domain": "wifi_map",
+  "name": "WiFi Position Map",
+  "version": "0.1.0",
+  "documentation": "https://github.com/daveinc/wifi-position-ha",
+  "issue_tracker": "https://github.com/daveinc/wifi-position-ha/issues",
+  "dependencies": ["mqtt"],
+  "codeowners": ["@daveinc"],
+  "requirements": [],
+  "iot_class": "local_push",
+  "hacs": "1.6.0"
+}
