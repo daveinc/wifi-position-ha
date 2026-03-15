@@ -13,11 +13,3 @@ COPY server.py .
 EXPOSE 8099
 
 CMD ["python3", "server.py"]
-```
-
-**`requirements.txt`:**
-```
-paho-mqtt==1.6.1
-aiohttp==3.9.5
-numpy==1.26.4
-scipy==1.13.1
