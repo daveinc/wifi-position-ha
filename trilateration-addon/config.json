@@ -7,6 +7,7 @@
   "arch": ["aarch64", "amd64", "armv7"],
   "startup": "application",
   "boot": "auto",
+  "init": false,
   "options": {
     "mqtt_host": "core-mosquitto",
     "mqtt_port": 1883,
