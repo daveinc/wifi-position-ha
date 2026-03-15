@@ -13,3 +13,5 @@ COPY server.py .
 
 # s6-overlay service definition
 COPY rootfs /
+RUN chmod +x /etc/services.d/wifi-position/run \
+    && chmod +x /etc/services.d/wifi-position/finish
