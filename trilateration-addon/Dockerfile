@@ -10,8 +10,7 @@ RUN pip3 install --break-system-packages -r requirements.txt
 
 COPY trilaterate.py .
 COPY server.py .
-COPY run.sh .
 
-RUN chmod +x run.sh
-
-CMD ["/app/run.sh"]
+COPY rootfs /
+RUN chmod +x /etc/services.d/wifi-position/run \
+    && chmod +x /etc/services.d/wifi-position/finish
