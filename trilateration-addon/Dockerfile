@@ -1,6 +1,6 @@
 FROM python:3.11-alpine
 
-RUN apk add --no-cache gcc musl-dev python3-dev openblas-dev gfortran
+RUN apk add --no-cache gcc g++ musl-dev python3-dev openblas-dev gfortran
 
 WORKDIR /app
 
